@@ -1,0 +1,10 @@
+node_modules
+.next
+.env.local
+.env.example
+.git
+.gitignore
+Dockerfile
+eslint.config.mjs
+*.log
+npm-debug.log*
