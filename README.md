@@ -60,10 +60,14 @@ Copy `.env.example` to `.env`, set `GOOGLE_CLIENT_ID` and
 also set `GOOGLE_REDIRECT_URI`, `FRONTEND_URL`, and `COOKIE_SECURE=true` to the
 HTTPS production URLs.
 
-### Vercel frontend deployment
+### Netlify frontend deployment
 
-Deploy the frontend from `apps/web`. Set this Vercel environment variable to
-your backend origin:
+Connect the repository to Netlify. The root `netlify.toml` tells Netlify to
+build `apps/web` and publish the static `apps/web/out` directory, so you do not
+need to enter the monorepo paths manually.
+
+Before the deploy, set this Netlify environment variable to the public origin
+of the backend (not the Netlify frontend URL):
 
 ```text
 NEXT_PUBLIC_BACKEND_DOMAIN=https://api.example.com
@@ -72,20 +76,36 @@ NEXT_PUBLIC_BACKEND_DOMAIN=https://api.example.com
 The frontend derives `https://api.example.com/api/v1` for HTTP requests and
 `wss://api.example.com/api/v1/ws` for WebSocket connections. If you move the
 backend to a new domain, update only `NEXT_PUBLIC_BACKEND_DOMAIN` and redeploy
-the Vercel frontend. `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_WS_URL` are
+the Netlify frontend. `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_WS_URL` are
 still supported as optional advanced overrides.
+
+The first frontend build does **not** need to know its own Netlify domain.
+After Netlify creates the site, copy the stable site URL shown in Netlify (for
+example, `https://your-site-name.netlify.app`) into the backend environment:
+
+```text
+FRONTEND_URL=https://your-site-name.netlify.app
+CORS_ORIGINS=https://your-site-name.netlify.app
+COOKIE_SECURE=true
+COOKIE_SAMESITE=none
+```
+
+Restart/redeploy only the backend after changing those values. You do not need
+to rebuild the frontend unless `NEXT_PUBLIC_BACKEND_DOMAIN` changes. Netlify
+also exposes its generated main site URL as `URL` during builds, but it is not
+the API endpoint and should not be assigned to `NEXT_PUBLIC_BACKEND_DOMAIN`.
 
 For a temporary ngrok backend, set the backend environment like this:
 
 ```text
-FRONTEND_URL=https://your-vercel-app.vercel.app
-CORS_ORIGINS=https://your-vercel-app.vercel.app
+FRONTEND_URL=https://your-site-name.netlify.app
+CORS_ORIGINS=https://your-site-name.netlify.app
 COOKIE_SECURE=true
 COOKIE_SAMESITE=none
 GOOGLE_REDIRECT_URI=https://your-ngrok-domain.ngrok-free.app/api/v1/auth/google/callback
 ```
 
-Then set the Vercel frontend environment to:
+Then set the Netlify frontend environment to:
 
 ```text
 NEXT_PUBLIC_BACKEND_DOMAIN=https://your-ngrok-domain.ngrok-free.app
