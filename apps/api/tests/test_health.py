@@ -41,6 +41,30 @@ def test_frontend_url_is_allowed_as_cors_origin() -> None:
     assert "https://chat-app.vercel.app" in settings.cors_origins
 
 
+def test_deployment_urls_are_normalized() -> None:
+    settings = Settings(
+        DATABASE_URL="postgresql+asyncpg://user:password@localhost:5432/app",
+        REDIS_URL="redis://localhost:6379/0",
+        JWT_SECRET_KEY="test-secret",
+        CORS_ORIGINS="https://chat-app.netlify.app/",
+        FRONTEND_URL="https://chat-app.netlify.app/",
+        GOOGLE_REDIRECT_URI="https://example.ngrok-free.dev/api/v1/auth/google/callback",
+    )
+
+    assert settings.FRONTEND_URL == "https://chat-app.netlify.app"
+    assert settings.CORS_ORIGINS == "https://chat-app.netlify.app"
+
+
+def test_malformed_cors_origin_is_rejected() -> None:
+    with pytest.raises(ValueError, match="CORS origin"):
+        Settings(
+            DATABASE_URL="postgresql+asyncpg://user:password@localhost:5432/app",
+            REDIS_URL="redis://localhost:6379/0",
+            JWT_SECRET_KEY="test-secret",
+            CORS_ORIGINS="https://https://chat-app.netlify.app/",
+        )
+
+
 def test_cross_site_https_request_uses_none_samesite_cookie() -> None:
     settings = get_settings()
     original_frontend_url = settings.FRONTEND_URL
@@ -92,6 +116,7 @@ def test_google_login_redirect_contains_state_and_openid_scopes() -> None:
     assert f"{parsed.scheme}://{parsed.netloc}{parsed.path}" == "https://accounts.google.com/o/oauth2/v2/auth"
     assert query["response_type"] == ["code"]
     assert query["scope"] == ["openid profile email"]
+    assert query["redirect_uri"] == [settings.GOOGLE_REDIRECT_URI]
     assert query["state"][0]
     assert response.cookies.get("google_oauth_state") == query["state"][0]
 
@@ -112,6 +137,7 @@ def test_google_authorization_returns_url_without_backend_redirect() -> None:
     parsed = urllib.parse.urlparse(response.json()["authorization_url"])
     query = urllib.parse.parse_qs(parsed.query)
     assert parsed.netloc == "accounts.google.com"
+    assert query["redirect_uri"] == [settings.GOOGLE_REDIRECT_URI]
     assert response.cookies.get("google_oauth_state") == query["state"][0]
 
 

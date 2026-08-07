@@ -37,12 +37,9 @@ def google_login_redirect(error: str | None = None) -> str:
 
 
 def request_callback_uri(request: Request) -> str:
-    """Use the public host for production and localhost for local OAuth runs."""
-    settings = get_settings()
-    host = request.headers.get("host", request.url.netloc)
-    forwarded_proto = request.headers.get("x-forwarded-proto")
-    scheme = forwarded_proto.split(",", 1)[0].strip() if forwarded_proto else request.url.scheme
-    return f"{scheme}://{host}{settings.API_V1_PREFIX.rstrip('/')}/auth/google/callback"
+    """Return the exact callback URI registered with Google."""
+    del request
+    return get_settings().GOOGLE_REDIRECT_URI
 
 
 def request_frontend_url(request: Request) -> str:

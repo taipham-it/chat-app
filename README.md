@@ -55,6 +55,17 @@ authorized redirect URI exactly:
 http://localhost:8000/api/v1/auth/google/callback
 ```
 
+Google requires an exact match, including the scheme, hostname, path, and
+trailing slash. For ngrok, add the current tunnel callback as a second
+authorized redirect URI, for example:
+
+```text
+https://your-ngrok-domain.ngrok-free.dev/api/v1/auth/google/callback
+```
+
+The value in Google Cloud and `GOOGLE_REDIRECT_URI` must be identical. Every
+time the ngrok hostname changes, update both places and restart the API.
+
 Copy `.env.example` to `.env`, set `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET`, then rebuild the API and web containers. For deployment,
 also set `GOOGLE_REDIRECT_URI`, `FRONTEND_URL`, and `COOKIE_SECURE=true` to the
@@ -104,6 +115,11 @@ COOKIE_SECURE=true
 COOKIE_SAMESITE=none
 GOOGLE_REDIRECT_URI=https://your-ngrok-domain.ngrok-free.app/api/v1/auth/google/callback
 ```
+
+Also add that exact `GOOGLE_REDIRECT_URI` under **Google Cloud Console → APIs &
+Services → Credentials → your Web application OAuth client → Authorized
+redirect URIs**. A valid backend environment must use the same Netlify origin
+for both `FRONTEND_URL` and `CORS_ORIGINS`; neither value may include a path.
 
 Then set the Netlify frontend environment to:
 

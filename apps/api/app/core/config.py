@@ -52,6 +52,54 @@ class Settings(BaseSettings):
             raise ValueError("COOKIE_SAMESITE must be one of: lax, strict, none")
         return value
 
+    @field_validator("FRONTEND_URL", mode="before")
+    @classmethod
+    def normalize_frontend_url(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        url = value.strip().rstrip("/")
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("FRONTEND_URL must be an absolute http(s) URL")
+        if parsed.path or parsed.params or parsed.query or parsed.fragment:
+            raise ValueError("FRONTEND_URL must contain only an origin (no path, query, or fragment)")
+        return url
+
+    @field_validator("GOOGLE_REDIRECT_URI", mode="before")
+    @classmethod
+    def normalize_google_redirect_uri(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        url = value.strip()
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("GOOGLE_REDIRECT_URI must be an absolute http(s) URL")
+        if not parsed.path.endswith("/auth/google/callback"):
+            raise ValueError("GOOGLE_REDIRECT_URI must end with /auth/google/callback")
+        if parsed.params or parsed.query or parsed.fragment:
+            raise ValueError("GOOGLE_REDIRECT_URI cannot contain parameters, a query, or a fragment")
+        return url
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def normalize_cors_origins(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized: list[str] = []
+        for raw_origin in value.split(","):
+            origin = raw_origin.strip().rstrip("/")
+            if not origin:
+                continue
+            parsed = urllib.parse.urlparse(origin)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError(f"Invalid CORS origin: {raw_origin.strip()}")
+            if parsed.path or parsed.params or parsed.query or parsed.fragment:
+                raise ValueError(f"CORS origins cannot contain a path, query, or fragment: {raw_origin.strip()}")
+            normalized.append(origin)
+        if not normalized:
+            raise ValueError("CORS_ORIGINS must contain at least one origin")
+        return ",".join(normalized)
+
     @property
     def cors_origins(self) -> list[str]:
         origins = {origin.strip().rstrip("/") for origin in self.CORS_ORIGINS.split(",") if origin.strip()}
