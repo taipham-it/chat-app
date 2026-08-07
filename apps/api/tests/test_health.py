@@ -96,6 +96,25 @@ def test_google_login_redirect_contains_state_and_openid_scopes() -> None:
     assert response.cookies.get("google_oauth_state") == query["state"][0]
 
 
+def test_google_authorization_returns_url_without_backend_redirect() -> None:
+    settings = get_settings()
+    original_client_id = settings.GOOGLE_CLIENT_ID
+    original_client_secret = settings.GOOGLE_CLIENT_SECRET
+    settings.GOOGLE_CLIENT_ID = "test-client-id"
+    settings.GOOGLE_CLIENT_SECRET = "test-client-secret"
+    try:
+        response = TestClient(app).get("/api/v1/auth/google/authorization")
+    finally:
+        settings.GOOGLE_CLIENT_ID = original_client_id
+        settings.GOOGLE_CLIENT_SECRET = original_client_secret
+
+    assert response.status_code == 200
+    parsed = urllib.parse.urlparse(response.json()["authorization_url"])
+    query = urllib.parse.parse_qs(parsed.query)
+    assert parsed.netloc == "accounts.google.com"
+    assert response.cookies.get("google_oauth_state") == query["state"][0]
+
+
 def test_google_login_normalizes_loopback_host_to_callback_host() -> None:
     settings = get_settings()
     original_client_id = settings.GOOGLE_CLIENT_ID

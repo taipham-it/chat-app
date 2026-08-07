@@ -18,3 +18,7 @@ class RefreshRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     authenticated: bool = True
+
+
+class GoogleAuthorizationResponse(BaseModel):
+    authorization_url: str

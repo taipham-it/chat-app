@@ -63,10 +63,11 @@ export function getApiBaseUrl(): string {
   return alignLoopbackHost(runtimeApiBaseUrl());
 }
 
-export function getGoogleLoginUrl(): string {
-  // OAuth cookies are host-specific. Keep the configured API host unchanged so
-  // it matches GOOGLE_REDIRECT_URI instead of swapping localhost/127.0.0.1.
-  return `${runtimeApiBaseUrl().replace(/\/$/, "")}/auth/google/login`;
+export async function beginGoogleLogin(): Promise<void> {
+  // Fetch the authorization URL through Axios so ngrok's browser-warning
+  // bypass header is included, then navigate directly to Google.
+  const response = await apiClient.get<{ authorization_url: string }>("/auth/google/authorization");
+  window.location.assign(response.data.authorization_url);
 }
 
 export function clearLegacyTokenStorage() {

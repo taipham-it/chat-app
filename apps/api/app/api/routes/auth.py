@@ -11,7 +11,13 @@ from app.core.exceptions import AuthenticationError
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.db.session import get_db_session
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import (
+    GoogleAuthorizationResponse,
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+)
 from app.schemas.user import UserResponse
 from app.services.auth_service import AuthService
 from app.services.google_auth_service import (
@@ -63,6 +69,18 @@ def request_cookie_samesite(request: Request | None = None) -> str:
     if origin_host and request_host and origin_host != request_host and request_is_secure(request):
         return "none"
     return settings.COOKIE_SAMESITE
+
+
+def set_google_oauth_state_cookie(response: Response, request: Request, state: str) -> None:
+    response.set_cookie(
+        "google_oauth_state",
+        state,
+        max_age=600,
+        httponly=True,
+        secure=request_is_secure(request),
+        samesite=request_cookie_samesite(request),
+        path="/",
+    )
 
 
 def set_auth_cookies(
@@ -154,16 +172,21 @@ async def google_login(request: Request) -> RedirectResponse:
         return RedirectResponse(canonical_login_url)
     state = secrets.token_urlsafe(32)
     response = RedirectResponse(build_google_authorization_url(state, request_callback_uri(request)))
-    response.set_cookie(
-        "google_oauth_state",
-        state,
-        max_age=600,
-        httponly=True,
-        secure=request_is_secure(request),
-        samesite=request_cookie_samesite(request),
-        path="/",
-    )
+    set_google_oauth_state_cookie(response, request, state)
     return response
+
+
+@router.get("/google/authorization", response_model=GoogleAuthorizationResponse)
+async def google_authorization(request: Request, response: Response) -> GoogleAuthorizationResponse:
+    """Return Google's URL without navigating a browser through an ngrok interstitial."""
+    settings = get_settings()
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        raise AuthenticationError("Google sign-in is not configured.", code="GOOGLE_NOT_CONFIGURED")
+    state = secrets.token_urlsafe(32)
+    set_google_oauth_state_cookie(response, request, state)
+    return GoogleAuthorizationResponse(
+        authorization_url=build_google_authorization_url(state, request_callback_uri(request))
+    )
 
 
 @router.get("/google/callback")

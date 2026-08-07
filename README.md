@@ -115,6 +115,9 @@ The web client automatically sends ngrok's `ngrok-skip-browser-warning`
 header for `ngrok-free.app` and `ngrok-free.dev` API domains. Without that
 header, a fresh browser can receive ngrok's interstitial HTML instead of the
 API response, which browsers often surface as a missing CORS header.
+Google sign-in also obtains its authorization URL through this API client and
+then navigates directly to Google, avoiding the interstitial on the OAuth entry
+route.
 
 ## Run locally without application containers (PowerShell)
 
