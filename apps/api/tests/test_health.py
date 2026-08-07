@@ -2,9 +2,11 @@ import urllib.parse
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 from starlette.websockets import WebSocketDisconnect
 
-from app.core.config import get_settings
+from app.api.routes.auth import request_cookie_samesite
+from app.core.config import Settings, get_settings
 from app.main import app
 
 
@@ -25,6 +27,44 @@ def test_localhost_alias_cors_preflight() -> None:
     )
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:3000"
+
+
+def test_frontend_url_is_allowed_as_cors_origin() -> None:
+    settings = Settings(
+        DATABASE_URL="postgresql+asyncpg://user:password@localhost:5432/app",
+        REDIS_URL="redis://localhost:6379/0",
+        JWT_SECRET_KEY="test-secret",
+        CORS_ORIGINS="http://localhost:3000",
+        FRONTEND_URL="https://chat-app.vercel.app",
+    )
+
+    assert "https://chat-app.vercel.app" in settings.cors_origins
+
+
+def test_cross_site_https_request_uses_none_samesite_cookie() -> None:
+    settings = get_settings()
+    original_frontend_url = settings.FRONTEND_URL
+    original_cookie_samesite = settings.COOKIE_SAMESITE
+    settings.FRONTEND_URL = "https://chat-app.vercel.app"
+    settings.COOKIE_SAMESITE = "lax"
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/auth/login",
+            "scheme": "https",
+            "server": ("backend.ngrok-free.app", 443),
+            "headers": [
+                (b"host", b"backend.ngrok-free.app"),
+                (b"origin", b"https://chat-app.vercel.app"),
+            ],
+        }
+    )
+    try:
+        assert request_cookie_samesite(request) == "none"
+    finally:
+        settings.FRONTEND_URL = original_frontend_url
+        settings.COOKIE_SAMESITE = original_cookie_samesite
 
 
 def test_websocket_without_session_closes_as_unauthorized() -> None:

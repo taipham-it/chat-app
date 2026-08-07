@@ -53,6 +53,18 @@ def request_is_secure(request: Request) -> bool:
     return scheme == "https"
 
 
+def request_cookie_samesite(request: Request | None = None) -> str:
+    settings = get_settings()
+    if request is None:
+        return settings.COOKIE_SAMESITE
+    origin = request.headers.get("origin")
+    origin_host = urllib.parse.urlparse(origin).hostname if origin else settings.frontend_hostname
+    request_host = request.url.hostname
+    if origin_host and request_host and origin_host != request_host and request_is_secure(request):
+        return "none"
+    return settings.COOKIE_SAMESITE
+
+
 def set_auth_cookies(
     response: Response, tokens: dict[str, str], request: Request | None = None
 ) -> None:
@@ -62,7 +74,7 @@ def set_auth_cookies(
     cookie_options = {
         "httponly": True,
         "secure": settings.COOKIE_SECURE if request is None else request_is_secure(request),
-        "samesite": "lax",
+        "samesite": request_cookie_samesite(request),
     }
     response.set_cookie(
         "access_token",
@@ -85,7 +97,7 @@ def clear_auth_cookies(response: Response, request: Request | None = None) -> No
     cookie_options = {
         "httponly": True,
         "secure": settings.COOKIE_SECURE if request is None else request_is_secure(request),
-        "samesite": "lax",
+        "samesite": request_cookie_samesite(request),
     }
     response.delete_cookie("access_token", path="/", **cookie_options)
     response.delete_cookie("refresh_token", path="/api/v1/auth", **cookie_options)
@@ -148,7 +160,7 @@ async def google_login(request: Request) -> RedirectResponse:
         max_age=600,
         httponly=True,
         secure=request_is_secure(request),
-        samesite="lax",
+        samesite=request_cookie_samesite(request),
         path="/",
     )
     return response

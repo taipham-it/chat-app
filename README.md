@@ -35,12 +35,16 @@ Set a deployment-safe secret before starting outside local development:
 ```powershell
 $env:JWT_SECRET_KEY = "replace-with-a-long-random-secret"
 $env:COOKIE_SECURE = "true"
+$env:COOKIE_SAMESITE = "none"
 $env:MINIO_SECRET_KEY = "replace-with-a-long-random-secret"
 docker compose up --build -d
 ```
 
 Authentication uses `HttpOnly`, `SameSite=Lax` access and refresh cookies. Keep
 `COOKIE_SECURE=false` only for local HTTP development; enable it behind HTTPS.
+When the frontend and backend use different hosted domains, such as Vercel plus
+ngrok, set `COOKIE_SAMESITE=none` so browser fetch requests can include the auth
+cookies.
 
 ### Google sign-in
 
@@ -70,6 +74,22 @@ The frontend derives `https://api.example.com/api/v1` for HTTP requests and
 backend to a new domain, update only `NEXT_PUBLIC_BACKEND_DOMAIN` and redeploy
 the Vercel frontend. `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_WS_URL` are
 still supported as optional advanced overrides.
+
+For a temporary ngrok backend, set the backend environment like this:
+
+```text
+FRONTEND_URL=https://your-vercel-app.vercel.app
+CORS_ORIGINS=https://your-vercel-app.vercel.app
+COOKIE_SECURE=true
+COOKIE_SAMESITE=none
+GOOGLE_REDIRECT_URI=https://your-ngrok-domain.ngrok-free.app/api/v1/auth/google/callback
+```
+
+Then set the Vercel frontend environment to:
+
+```text
+NEXT_PUBLIC_BACKEND_DOMAIN=https://your-ngrok-domain.ngrok-free.app
+```
 
 ## Run locally without application containers (PowerShell)
 
