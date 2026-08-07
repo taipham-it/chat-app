@@ -111,6 +111,11 @@ Then set the Netlify frontend environment to:
 NEXT_PUBLIC_BACKEND_DOMAIN=https://your-ngrok-domain.ngrok-free.app
 ```
 
+The web client automatically sends ngrok's `ngrok-skip-browser-warning`
+header for `ngrok-free.app` and `ngrok-free.dev` API domains. Without that
+header, a fresh browser can receive ngrok's interstitial HTML instead of the
+API response, which browsers often surface as a missing CORS header.
+
 ## Run locally without application containers (PowerShell)
 
 From `D:\chat-app`:

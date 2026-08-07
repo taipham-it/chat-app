@@ -41,9 +41,22 @@ function alignLoopbackHost(rawUrl: string): string {
   return url.toString().replace(/\/$/, "");
 }
 
+function apiRequestHeaders(rawUrl: string): Record<string, string> {
+  const hostname = new URL(rawUrl).hostname.toLowerCase();
+  if (hostname.endsWith(".ngrok-free.app") || hostname.endsWith(".ngrok-free.dev")) {
+    // Free ngrok domains return a browser interstitial before the API response
+    // unless programmatic clients explicitly opt out of it.
+    return { "ngrok-skip-browser-warning": "true" };
+  }
+  return {};
+}
+
+const resolvedApiBaseUrl = alignLoopbackHost(runtimeApiBaseUrl());
+
 export const apiClient = axios.create({
-  baseURL: alignLoopbackHost(runtimeApiBaseUrl()),
+  baseURL: resolvedApiBaseUrl,
   withCredentials: true,
+  headers: apiRequestHeaders(resolvedApiBaseUrl),
 });
 
 export function getApiBaseUrl(): string {
@@ -78,9 +91,9 @@ export async function refreshSession(): Promise<void> {
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     await axios.post(
-      `${alignLoopbackHost(runtimeApiBaseUrl())}/auth/refresh`,
+      `${resolvedApiBaseUrl}/auth/refresh`,
       {},
-      { withCredentials: true },
+      { withCredentials: true, headers: apiRequestHeaders(resolvedApiBaseUrl) },
     );
   })();
   try {
