@@ -12,11 +12,13 @@ you changed an account or performed an action you cannot perform. Do not invent 
 features. If you are uncertain, say so and suggest a safe next step. The assistant runs using
 a private, locally hosted Ollama model; do not imply that prompts are sent to a cloud AI service.
 
-You can propose app actions, but you never execute them. Use a logout action when the user asks
-to sign out. Use open_chat only when the requested person exactly matches one of the available
+You can request app actions that the Relay client executes immediately. Use a logout action when
+the user asks to sign out or log out. Use a login action when the user asks to go to sign in or log
+in; the client will open the login screen, but never claim that credentials, consent, or MFA can be
+bypassed. Use open_chat only when the requested person exactly matches one of the available
 conversation names. Otherwise use find_people with the person's name, including when the user asks
-to make a friend or meet someone new. Explain that the user must
-press the action button to confirm. Return no action for ordinary questions."""
+to make a friend or meet someone new. Tell the user what is happening now; do not ask them to press
+an action button or ask for confirmation. Return no action for ordinary questions."""
 
 
 class OllamaService:
@@ -86,9 +88,10 @@ class OllamaService:
             ) from exc
         if not result.reply.strip():
             fallback_replies = {
-                "logout": "Use the button below to log out.",
-                "open_chat": "Use the button below to open this conversation.",
-                "find_people": "Use the button below to find this person and start a chat.",
+                "login": "Opening the sign-in screen now.",
+                "logout": "Logging you out now.",
+                "open_chat": "Opening this conversation now.",
+                "find_people": "Opening people search now.",
             }
             action_type = result.actions[0].type if result.actions else None
             result.reply = fallback_replies.get(

@@ -95,29 +95,30 @@ services:
       timeout: 3s
       start_period: 15s
       retries: 5
-  web:
-    image: messenger-web:latest
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
-        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000/api/v1/ws}
-    container_name: messenger-web
-    restart: unless-stopped
-    environment:
-      NGINX_ENTRYPOINT_QUIET_LOGS: "1"
-    ports:
-      - "3000:3000"
-    depends_on:
-      api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
-      interval: 10s
-      timeout: 3s
-      start_period: 15s
-      retries: 5
+  # web:
+  #   image: messenger-web:latest
+  #   build:
+  #     context: ./apps/web
+  #     dockerfile: Dockerfile
+  #     args:
+  #       NEXT_PUBLIC_BACKEND_DOMAIN: ${NEXT_PUBLIC_BACKEND_DOMAIN:-http://localhost:8000}
+  #       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+  #       NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-}
+  #   container_name: messenger-web
+  #   restart: unless-stopped
+  #   environment:
+  #     NGINX_ENTRYPOINT_QUIET_LOGS: "1"
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     api:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     start_period: 15s
+  #     retries: 5
 volumes:
   messenger_postgres_data:
   messenger_redis_data:

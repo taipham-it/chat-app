@@ -1,17 +1,16 @@
 "use client";
 
-import { BsBoxArrowRight, BsChatText, BsPersonPlus, BsRobot, BsSendFill, BsTrash3, BsXLg } from "react-icons/bs";
+import { BsRobot, BsSendFill, BsTrash3, BsXLg } from "react-icons/bs";
 import { FormEvent, useState } from "react";
 import { apiClient, getApiErrorMessage } from "@/lib/api-client";
 
 type SupportMessage = {
   role: "user" | "assistant";
   content: string;
-  actions?: SupportAction[];
 };
 
 type SupportAction = {
-  type: "logout" | "open_chat" | "find_people";
+  type: "login" | "logout" | "open_chat" | "find_people";
   label: string;
   target?: string | null;
 };
@@ -20,6 +19,7 @@ type SupportAssistantProps = {
   conversations: Array<{ id: string; name: string }>;
   onClose: () => void;
   onFindPeople: (query: string) => void;
+  onLogin: () => void;
   onLogout: () => void;
   onOpenConversation: (conversationId: string) => void;
 };
@@ -29,7 +29,15 @@ const welcomeMessage: SupportMessage = {
   content: "Hi! I’m Relay Support, running on your local Ollama model. How can I help?",
 };
 
-export function SupportAssistant({ conversations, onClose, onFindPeople, onLogout, onOpenConversation }: SupportAssistantProps) {
+function directAuthAction(message: string): "login" | "logout" | null {
+  const request = message.toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (/^(please )?((can|could|would|will) you )?(log|sign)( me)? out( now)?( please)?$/.test(request) || /^(i (want|need|would like) (you )?to )?(log out|logout|sign out)( now)?( please)?$/.test(request)) return "logout";
+  if (/^(please )?(open|go to|take me to)( the)? (log in|login|sign in)( page| screen)?( now)?$/.test(request)) return "login";
+  if (/^(please )?((can|could|would|will) you )?(log|sign)( me)? in( now)?( please)?$/.test(request) || /^(i (want|need|would like) (you )?to )?(log in|login|sign in)( now)?( please)?$/.test(request)) return "login";
+  return null;
+}
+
+export function SupportAssistant({ conversations, onClose, onFindPeople, onLogin, onLogout, onOpenConversation }: SupportAssistantProps) {
   const [messages, setMessages] = useState<SupportMessage[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,6 +52,13 @@ export function SupportAssistant({ conversations, onClose, onFindPeople, onLogou
     setMessages((current) => [...current, { role: "user", content: message }]);
     setInput("");
     setError("");
+    const authAction = directAuthAction(message);
+    if (authAction) {
+      setMessages((current) => [...current, { role: "assistant", content: authAction === "logout" ? "Logging you out now." : "Opening the sign-in screen now." }]);
+      if (authAction === "logout") onLogout();
+      else onLogin();
+      return;
+    }
     setLoading(true);
     try {
       const response = await apiClient.post<{ reply: string; model: string; actions: SupportAction[] }>("/support/chat", {
@@ -51,7 +66,9 @@ export function SupportAssistant({ conversations, onClose, onFindPeople, onLogou
         history,
         available_conversations: conversations.map((conversation) => conversation.name),
       });
-      setMessages((current) => [...current, { role: "assistant", content: response.data.reply, actions: response.data.actions }]);
+      setMessages((current) => [...current, { role: "assistant", content: response.data.reply }]);
+      const action = response.data.actions[0];
+      if (action) runAction(action);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "The support assistant could not answer right now."));
     } finally {
@@ -60,6 +77,10 @@ export function SupportAssistant({ conversations, onClose, onFindPeople, onLogou
   }
 
   function runAction(action: SupportAction) {
+    if (action.type === "login") {
+      onLogin();
+      return;
+    }
     if (action.type === "logout") {
       onLogout();
       return;
@@ -77,12 +98,6 @@ export function SupportAssistant({ conversations, onClose, onFindPeople, onLogou
     onClose();
   }
 
-  function actionIcon(action: SupportAction) {
-    if (action.type === "logout") return <BsBoxArrowRight size={14}/>;
-    if (action.type === "open_chat") return <BsChatText size={14}/>;
-    return <BsPersonPlus size={14}/>;
-  }
-
   return <div className="support-backdrop" onMouseDown={onClose}>
     <section className="support-panel" onMouseDown={(event) => event.stopPropagation()} aria-label="Relay Support assistant">
       <header>
@@ -90,7 +105,7 @@ export function SupportAssistant({ conversations, onClose, onFindPeople, onLogou
         <div className="support-actions"><button type="button" onClick={() => { setMessages([welcomeMessage]); setError(""); }} aria-label="Clear assistant chat" title="Clear chat"><BsTrash3 size={17}/></button><button type="button" onClick={onClose} aria-label="Close assistant"><BsXLg size={19}/></button></div>
       </header>
       <div className="support-messages" aria-live="polite">
-        {messages.map((item, index) => <div key={index} className={`support-message ${item.role}`}><div className="support-message-content"><span>{item.content}</span>{item.actions && item.actions.length > 0 && <div className="support-action-list">{item.actions.map((action, actionIndex) => <button key={`${action.type}-${actionIndex}`} type="button" onClick={() => runAction(action)}>{actionIcon(action)} {action.label}</button>)}</div>}</div></div>)}
+        {messages.map((item, index) => <div key={index} className={`support-message ${item.role}`}><div className="support-message-content"><span>{item.content}</span></div></div>)}
         {loading && <div className="support-message assistant"><span className="support-thinking">Thinking<span>…</span></span></div>}
       </div>
       {error && <p className="support-error">{error}</p>}

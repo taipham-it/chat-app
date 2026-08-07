@@ -489,7 +489,7 @@ export default function ChatPage() {
         {friends.data?.map((friend, index) => <div className="friend-row" key={friend.id}><div className={`avatar tone-${(index + 1) % 4}`}>{initials(friend.user.username)}</div><div><strong>{friend.user.username}</strong><span>{friend.user.email}</span></div><button onClick={() => startConversation(friend.user.id)}><BsChatSquareText size={14}/> Message</button></div>)}
       </div>}
     </div></section></div>}
-    {showSupport && <SupportAssistant conversations={(conversations.data ?? []).map((conversation) => ({ id: conversation.id, name: titleFor(conversation) }))} onClose={() => setShowSupport(false)} onFindPeople={(query) => openPeopleFinder("friend", query)} onLogout={logout} onOpenConversation={openConversation}/>}
+    {showSupport && <SupportAssistant conversations={(conversations.data ?? []).map((conversation) => ({ id: conversation.id, name: titleFor(conversation) }))} onClose={() => setShowSupport(false)} onFindPeople={(query) => openPeopleFinder("friend", query)} onLogin={logout} onLogout={logout} onOpenConversation={openConversation}/>}
     {notice && <button className="app-toast" onClick={() => { if (notice.friend) openPeopleFinder("friend"); else if (notice.conversationId) openConversation(notice.conversationId); setNotice(null); }}><span>{notice.friend ? <BsPersonPlus size={18}/> : <BsChatSquareText size={18}/>}</span><strong>{notice.text}</strong><small>Open</small></button>}
   </main>;
 }

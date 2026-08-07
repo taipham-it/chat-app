@@ -1,6 +1,28 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const defaultBackendDomain = "http://localhost:8000";
+const apiPath = "/api/v1";
+const wsPath = "/api/v1/ws";
+
+function envValue(value: string | undefined): string | undefined {
+  return value?.trim() || undefined;
+}
+
+const backendDomain = envValue(process.env.NEXT_PUBLIC_BACKEND_DOMAIN) ?? defaultBackendDomain;
+
+function withPath(rawDomain: string, path: string): string {
+  const domainWithProtocol = rawDomain.includes("://") ? rawDomain : `https://${rawDomain}`;
+  const url = new URL(domainWithProtocol);
+  url.pathname = `${url.pathname.replace(/\/$/, "")}${path}`;
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
+}
+
+const apiBaseUrl = envValue(process.env.NEXT_PUBLIC_API_BASE_URL) ?? withPath(backendDomain, apiPath);
+const wsBaseUrl =
+  envValue(process.env.NEXT_PUBLIC_WS_URL) ??
+  withPath(backendDomain, wsPath).replace(/^http:\/\//, "ws://").replace(/^https:\/\//, "wss://");
 
 function runtimeApiBaseUrl(): string {
   if (typeof window !== "undefined" && ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname)) {
@@ -41,9 +63,7 @@ export function clearLegacyTokenStorage() {
 }
 
 export function getWebSocketUrl(): string {
-  return alignLoopbackHost(
-    process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/api/v1/ws",
-  );
+  return alignLoopbackHost(wsBaseUrl);
 }
 
 type ApiErrorBody = {

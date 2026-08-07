@@ -56,6 +56,21 @@ Copy `.env.example` to `.env`, set `GOOGLE_CLIENT_ID` and
 also set `GOOGLE_REDIRECT_URI`, `FRONTEND_URL`, and `COOKIE_SECURE=true` to the
 HTTPS production URLs.
 
+### Vercel frontend deployment
+
+Deploy the frontend from `apps/web`. Set this Vercel environment variable to
+your backend origin:
+
+```text
+NEXT_PUBLIC_BACKEND_DOMAIN=https://api.example.com
+```
+
+The frontend derives `https://api.example.com/api/v1` for HTTP requests and
+`wss://api.example.com/api/v1/ws` for WebSocket connections. If you move the
+backend to a new domain, update only `NEXT_PUBLIC_BACKEND_DOMAIN` and redeploy
+the Vercel frontend. `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_WS_URL` are
+still supported as optional advanced overrides.
+
 ## Run locally without application containers (PowerShell)
 
 From `D:\chat-app`:

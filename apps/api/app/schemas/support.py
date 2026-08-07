@@ -15,7 +15,7 @@ class SupportChatRequest(BaseModel):
 
 
 class SupportAction(BaseModel):
-    type: Literal["logout", "open_chat", "find_people"]
+    type: Literal["login", "logout", "open_chat", "find_people"]
     label: str = Field(min_length=1, max_length=80)
     target: str | None = Field(default=None, max_length=100)
 
