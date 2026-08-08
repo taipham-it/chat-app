@@ -101,6 +101,13 @@ COOKIE_SECURE=true
 COOKIE_SAMESITE=none
 ```
 
+If you also test Netlify deploy previews, allow only previews belonging to the
+same site (replace the site name below):
+
+```text
+CORS_ORIGIN_REGEX=^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://([a-z0-9-]+--)?your-site-name\.netlify\.app)$
+```
+
 Restart/redeploy only the backend after changing those values. You do not need
 to rebuild the frontend unless `NEXT_PUBLIC_BACKEND_DOMAIN` changes. Netlify
 also exposes its generated main site URL as `URL` during builds, but it is not
