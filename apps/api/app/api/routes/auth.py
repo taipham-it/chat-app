@@ -141,7 +141,11 @@ async def login(
         password=payload.password,
     )
     set_auth_cookies(response, tokens, request)
-    return TokenResponse()
+    return TokenResponse(
+        authenticated=True,
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"],
+    )
 
 
 @router.get("/google/login")
@@ -205,13 +209,16 @@ async def google_callback(
     except AuthenticationError:
         return RedirectResponse(f"{request_frontend_url(request)}/login?error=google_auth_failed")
 
-    response = RedirectResponse(f"{request_frontend_url(request)}/chat")
+    tokens = {
+        "access_token": create_access_token(str(user.id)),
+        "refresh_token": create_refresh_token(str(user.id)),
+    }
+    frontend_url = request_frontend_url(request)
+    redirect_url = f"{frontend_url}/chat/?access_token={tokens['access_token']}&refresh_token={tokens['refresh_token']}"
+    response = RedirectResponse(redirect_url)
     set_auth_cookies(
         response,
-        {
-            "access_token": create_access_token(str(user.id)),
-            "refresh_token": create_refresh_token(str(user.id)),
-        },
+        tokens,
         request,
     )
     response.delete_cookie(

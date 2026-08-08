@@ -114,7 +114,7 @@ export default function ChatPage() {
   const typingExpiryTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const { connect, disconnect, sendEvent, subscribe, status } = useWebSocketStore();
 
-  useEffect(() => { clearLegacyTokenStorage(); return () => disconnect(); }, [disconnect]);
+  useEffect(() => { return () => disconnect(); }, [disconnect]);
   useEffect(() => {
     const timer = window.setTimeout(() => setNotificationPermission("Notification" in window ? Notification.permission : "unsupported"), 0);
     return () => window.clearTimeout(timer);
@@ -356,7 +356,7 @@ export default function ChatPage() {
   }
   async function logout() {
     try { await apiClient.post("/auth/logout"); } finally {
-      disconnect(); queryClient.clear(); window.location.replace("/login");
+      clearLegacyTokenStorage(); disconnect(); queryClient.clear(); window.location.replace("/login");
     }
   }
 

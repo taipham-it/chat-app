@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { RiChat3Fill } from "react-icons/ri";
-import { apiClient, beginGoogleLogin, clearLegacyTokenStorage, getApiErrorMessage } from "@/lib/api-client";
+import { apiClient, beginGoogleLogin, getApiErrorMessage, setStoredTokens } from "@/lib/api-client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,8 +27,13 @@ export default function LoginPage() {
     event.preventDefault(); setBusy(true); setError("");
     const data = new FormData(event.currentTarget);
     try {
-      await apiClient.post("/auth/login", { email: data.get("email"), password: data.get("password") });
-      clearLegacyTokenStorage();
+      const response = await apiClient.post<{ access_token?: string; refresh_token?: string }>("/auth/login", {
+        email: data.get("email"),
+        password: data.get("password"),
+      });
+      if (response.data?.access_token) {
+        setStoredTokens(response.data.access_token, response.data.refresh_token);
+      }
       router.push("/chat");
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Could not sign in. Check your details and try again."));

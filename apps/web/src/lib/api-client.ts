@@ -53,21 +53,30 @@ function apiRequestHeaders(rawUrl: string): Record<string, string> {
 
 const resolvedApiBaseUrl = alignLoopbackHost(runtimeApiBaseUrl());
 
-export const apiClient = axios.create({
-  baseURL: resolvedApiBaseUrl,
-  withCredentials: true,
-  headers: apiRequestHeaders(resolvedApiBaseUrl),
-});
-
-export function getApiBaseUrl(): string {
-  return alignLoopbackHost(runtimeApiBaseUrl());
+export function getStoredAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const tokenFromUrl = params.get("access_token");
+  const refreshTokenFromUrl = params.get("refresh_token");
+  if (tokenFromUrl) {
+    localStorage.setItem("relay_access_token", tokenFromUrl);
+    if (refreshTokenFromUrl) {
+      localStorage.setItem("relay_refresh_token", refreshTokenFromUrl);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("access_token");
+    url.searchParams.delete("refresh_token");
+    const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState({}, "", cleanUrl);
+    return tokenFromUrl;
+  }
+  return localStorage.getItem("relay_access_token");
 }
 
-export async function beginGoogleLogin(): Promise<void> {
-  // Fetch the authorization URL through Axios so ngrok's browser-warning
-  // bypass header is included, then navigate directly to Google.
-  const response = await apiClient.get<{ authorization_url: string }>("/auth/google/authorization");
-  window.location.assign(response.data.authorization_url);
+export function setStoredTokens(accessToken?: string, refreshToken?: string) {
+  if (typeof window === "undefined") return;
+  if (accessToken) localStorage.setItem("relay_access_token", accessToken);
+  if (refreshToken) localStorage.setItem("relay_refresh_token", refreshToken);
 }
 
 export function clearLegacyTokenStorage() {
@@ -76,8 +85,35 @@ export function clearLegacyTokenStorage() {
   localStorage.removeItem("relay_refresh_token");
 }
 
+export const apiClient = axios.create({
+  baseURL: resolvedApiBaseUrl,
+  withCredentials: true,
+  headers: apiRequestHeaders(resolvedApiBaseUrl),
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = getStoredAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export function getApiBaseUrl(): string {
+  return alignLoopbackHost(runtimeApiBaseUrl());
+}
+
+export async function beginGoogleLogin(): Promise<void> {
+  const response = await apiClient.get<{ authorization_url: string }>("/auth/google/authorization");
+  window.location.assign(response.data.authorization_url);
+}
+
 export function getWebSocketUrl(): string {
-  return alignLoopbackHost(wsBaseUrl);
+  let url = alignLoopbackHost(wsBaseUrl);
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    url = url.replace(/^ws:\/\//, "wss://");
+  }
+  return url;
 }
 
 type ApiErrorBody = {
@@ -91,11 +127,15 @@ let refreshInFlight: Promise<void> | null = null;
 export async function refreshSession(): Promise<void> {
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
-    await axios.post(
+    const storedRefresh = typeof window !== "undefined" ? localStorage.getItem("relay_refresh_token") : null;
+    const response = await axios.post<{ access_token?: string; refresh_token?: string }>(
       `${resolvedApiBaseUrl}/auth/refresh`,
-      {},
+      storedRefresh ? { refresh_token: storedRefresh } : {},
       { withCredentials: true, headers: apiRequestHeaders(resolvedApiBaseUrl) },
     );
+    if (response.data?.access_token) {
+      setStoredTokens(response.data.access_token, response.data.refresh_token);
+    }
   })();
   try {
     return await refreshInFlight;

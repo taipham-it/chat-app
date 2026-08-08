@@ -18,6 +18,9 @@ class RefreshRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     authenticated: bool = True
+    access_token: str | None = None
+    refresh_token: str | None = None
+    token_type: str = "bearer"
 
 
 class GoogleAuthorizationResponse(BaseModel):
